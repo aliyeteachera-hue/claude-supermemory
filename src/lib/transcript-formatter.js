@@ -1,12 +1,13 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
+const { getIncludeTools, shouldIncludeTool } = require('./settings');
 
 const MAX_TOOL_RESULT_LENGTH = 500;
-const SKIP_RESULT_TOOLS = ['Read'];
 const TRACKER_DIR = path.join(os.homedir(), '.supermemory-claude', 'trackers');
 
 let toolUseMap = new Map();
+let currentIncludeList = [];
 
 function ensureTrackerDir() {
   if (!fs.existsSync(TRACKER_DIR)) {
@@ -92,19 +93,19 @@ function formatUserMessage(message) {
   if (typeof content === 'string') {
     const cleaned = cleanContent(content);
     if (cleaned) {
-      parts.push(`[role:user]\n${cleaned}\n[user:end]`);
+      parts.push(`<|start|>user<|message|>${cleaned}<|end|>`);
     }
   } else if (Array.isArray(content)) {
     for (const block of content) {
       if (block.type === 'text' && block.text) {
         const cleaned = cleanContent(block.text);
         if (cleaned) {
-          parts.push(`[role:user]\n${cleaned}\n[user:end]`);
+          parts.push(`<|start|>user<|message|>${cleaned}<|end|>`);
         }
       } else if (block.type === 'tool_result') {
         const toolId = block.tool_use_id || '';
         const toolName = toolUseMap.get(toolId) || 'Unknown';
-        if (SKIP_RESULT_TOOLS.includes(toolName)) {
+        if (!shouldIncludeTool(toolName, currentIncludeList)) {
           continue;
         }
         const resultContent = truncate(
@@ -114,14 +115,14 @@ function formatUserMessage(message) {
         const status = block.is_error ? 'error' : 'success';
         if (resultContent) {
           parts.push(
-            `[tool_result:${toolName} status="${status}"]\n${resultContent}\n[tool_result:end]`,
+            `<|start|>assistant:tool_result<|message|>${toolName}(${status}): ${resultContent}<|end|>`,
           );
         }
       }
     }
   }
 
-  return parts.length > 0 ? parts.join('\n\n') : null;
+  return parts.length > 0 ? parts.join('\n') : null;
 }
 
 function formatAssistantMessage(message) {
@@ -129,6 +130,7 @@ function formatAssistantMessage(message) {
 
   const content = message.content;
   const parts = [];
+  let pendingSkipped = [];
 
   if (!Array.isArray(content)) return null;
 
@@ -138,31 +140,52 @@ function formatAssistantMessage(message) {
     if (block.type === 'text' && block.text) {
       const cleaned = cleanContent(block.text);
       if (cleaned) {
-        parts.push(`[role:assistant]\n${cleaned}\n[assistant:end]`);
+        const prefix = pendingSkipped.length > 0 ? pendingSkipped.join(' ') + ' ' : '';
+        parts.push({ type: 'text', content: prefix + cleaned });
+        pendingSkipped = [];
       }
     } else if (block.type === 'tool_use') {
       const toolName = block.name || 'Unknown';
       const toolId = block.id || '';
-      const input = block.input || {};
-      const inputLines = formatToolInput(input);
-      parts.push(`[tool:${toolName}]\n${inputLines}\n[tool:end]`);
       if (toolId) {
         toolUseMap.set(toolId, toolName);
       }
+      if (!shouldIncludeTool(toolName, currentIncludeList)) {
+        pendingSkipped.push(`Assistant uses ${toolName} tool.`);
+        continue;
+      }
+      if (pendingSkipped.length > 0) {
+        parts.push({ type: 'text', content: pendingSkipped.join(' ') });
+        pendingSkipped = [];
+      }
+      const input = block.input || {};
+      const inputStr = formatToolInputCompact(input);
+      parts.push({ type: 'tool', toolName, inputStr });
     }
   }
 
-  return parts.length > 0 ? parts.join('\n\n') : null;
+  if (pendingSkipped.length > 0) {
+    parts.push({ type: 'text', content: pendingSkipped.join(' ') });
+  }
+
+  const formatted = parts.map((p) => {
+    if (p.type === 'text') {
+      return `<|start|>assistant<|message|>${p.content}<|end|>`;
+    }
+    return `<|start|>assistant:tool<|message|>${p.toolName}: ${p.inputStr}<|end|>`;
+  });
+
+  return formatted.length > 0 ? formatted.join('\n') : null;
 }
 
-function formatToolInput(input) {
-  const lines = [];
+function formatToolInputCompact(input) {
+  const parts = [];
   for (const [key, value] of Object.entries(input)) {
     let valueStr = typeof value === 'string' ? value : JSON.stringify(value);
-    valueStr = truncate(valueStr, 200);
-    lines.push(`${key}: ${valueStr}`);
+    valueStr = truncate(valueStr, 100);
+    parts.push(`${key}="${valueStr}"`);
   }
-  return lines.join('\n');
+  return parts.join(' ');
 }
 
 function cleanContent(text) {
@@ -179,8 +202,9 @@ function truncate(text, maxLength) {
   return `${text.slice(0, maxLength)}...`;
 }
 
-function formatNewEntries(transcriptPath, sessionId) {
+function formatNewEntries(transcriptPath, sessionId, cwd) {
   toolUseMap = new Map();
+  currentIncludeList = getIncludeTools(cwd);
 
   const entries = parseTranscript(transcriptPath);
   if (entries.length === 0) return null;
@@ -196,7 +220,7 @@ function formatNewEntries(transcriptPath, sessionId) {
 
   const formattedParts = [];
 
-  formattedParts.push(`[turn:start timestamp="${timestamp}"]`);
+  formattedParts.push(`<|turn_start|>${timestamp}`);
 
   for (const entry of newEntries) {
     const formatted = formatEntry(entry);
@@ -205,7 +229,7 @@ function formatNewEntries(transcriptPath, sessionId) {
     }
   }
 
-  formattedParts.push('[turn:end]');
+  formattedParts.push('<|turn_end|>');
 
   const result = formattedParts.join('\n\n');
 

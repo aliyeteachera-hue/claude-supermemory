@@ -9,11 +9,10 @@ const OUT = path.join(ROOT, 'plugin', 'scripts');
 
 const hooks = [
   'context-hook',
-  'prompt-hook',
-  'observation-hook',
   'summary-hook',
   'search-memory',
   'add-memory',
+  'save-project-memory',
 ];
 
 async function build() {

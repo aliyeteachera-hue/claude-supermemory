@@ -2,13 +2,16 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const { loadCredentials } = require('./auth');
+const { loadProjectConfig } = require('./project-config');
 
 const SETTINGS_DIR = path.join(os.homedir(), '.supermemory-claude');
 const SETTINGS_FILE = path.join(SETTINGS_DIR, 'settings.json');
 
+// Available tools: Read, Write, Edit, Glob, Grep, Bash, WebSearch, WebFetch,
+// Task, TaskOutput, TodoWrite, AskUserQuestion, ExitPlanMode, NotebookEdit,
+// LSP, MCPSearch, KillShell, Skill, EnterPlanMode
 const DEFAULT_SETTINGS = {
-  skipTools: ['Read', 'Glob', 'Grep', 'TodoWrite', 'AskUserQuestion'],
-  captureTools: ['Edit', 'Write', 'Bash', 'Task'],
+  includeTools: [],
   maxProfileItems: 5,
   debug: false,
   injectProfile: true,
@@ -32,10 +35,6 @@ function loadSettings() {
   }
   if (process.env.SUPERMEMORY_CC_API_KEY)
     settings.apiKey = process.env.SUPERMEMORY_CC_API_KEY;
-  if (process.env.SUPERMEMORY_SKIP_TOOLS)
-    settings.skipTools = process.env.SUPERMEMORY_SKIP_TOOLS.split(',').map(
-      (s) => s.trim(),
-    );
   if (process.env.SUPERMEMORY_DEBUG === 'true') settings.debug = true;
   return settings;
 }
@@ -47,23 +46,18 @@ function saveSettings(settings) {
   fs.writeFileSync(SETTINGS_FILE, JSON.stringify(toSave, null, 2));
 }
 
-function getApiKey(settings) {
+function getApiKey(settings, cwd) {
   if (settings.apiKey) return settings.apiKey;
   if (process.env.SUPERMEMORY_CC_API_KEY)
     return process.env.SUPERMEMORY_CC_API_KEY;
+
+  const projectConfig = loadProjectConfig(cwd || process.cwd());
+  if (projectConfig?.apiKey) return projectConfig.apiKey;
 
   const credentials = loadCredentials();
   if (credentials?.apiKey) return credentials.apiKey;
 
   throw new Error('NO_API_KEY');
-}
-
-function shouldCaptureTool(toolName, settings) {
-  if (settings.skipTools.includes(toolName)) return false;
-  if (settings.captureTools && settings.captureTools.length > 0) {
-    return settings.captureTools.includes(toolName);
-  }
-  return true;
 }
 
 function debugLog(settings, message, data) {
@@ -77,6 +71,22 @@ function debugLog(settings, message, data) {
   }
 }
 
+function getIncludeTools(cwd) {
+  const settings = loadSettings();
+  const projectConfig = loadProjectConfig(cwd || process.cwd());
+
+  const globalInclude = settings.includeTools || [];
+  const projectInclude = projectConfig?.includeTools || [];
+
+  const merged = [...new Set([...globalInclude, ...projectInclude])];
+  return merged.map((t) => t.toLowerCase());
+}
+
+function shouldIncludeTool(toolName, includeList) {
+  if (includeList.length === 0) return false;
+  return includeList.includes(toolName.toLowerCase());
+}
+
 module.exports = {
   SETTINGS_DIR,
   SETTINGS_FILE,
@@ -84,6 +94,7 @@ module.exports = {
   loadSettings,
   saveSettings,
   getApiKey,
-  shouldCaptureTool,
   debugLog,
+  getIncludeTools,
+  shouldIncludeTool,
 };

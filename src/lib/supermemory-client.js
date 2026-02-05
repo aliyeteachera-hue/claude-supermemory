@@ -8,6 +8,45 @@ const {
 const DEFAULT_PROJECT_ID = 'claudecode_default';
 const API_URL = process.env.SUPERMEMORY_API_URL || 'https://api.supermemory.ai';
 
+const PERSONAL_ENTITY_CONTEXT = `Developer coding session transcript. Focus on USER message and intent.
+
+RULES:
+- Extract USER's action/intent, not every detail assistant provides matter
+- Condense assistant responses into what user gained from it
+- Skip granular facts from assistant output
+
+EXTRACT:
+- Research: "researched whisper.cpp for speech recognition"
+- Actions: "built auth flow with JWT", "fixed memory leak in useEffect"
+- Preferences: "prefers Tailwind over CSS modules"
+- Decisions: "chose SQLite for local storage"
+- Learnings: "learned about React Server Components"
+
+EXAMPLES:
+| Transcript | Memory |
+| [role:user] research about the whisper.cpp -> https://github.com/ggml-org/whisper.cpp/blob/master/src/whisper.cpp [user:end]| "<User> starts research about whisper.cpp" |
+| [role:assistant] ## whisper.cpp Architecture Summary \n This is highly relevant for your parakeet.cpp implementation. Here are the key patterns: \n ### Core Architecture \n **Two-level context design:**\n - whisper_context - holds model weights, vocab, hyperparameters (persistent) \n - whisper_state - runtime state, KV caches, backends (can have multiple per context) [assistant:end] | "Assistant did a deep dive on whisper architecture" |
+| [role:user] Can we explain what we are currently doing in this repository? [user:end] | "<Multiple comprehensive memories using assistant reponse>" |
+
+SKIP:
+- Every fact assistant mentions (condense to user's action)
+- Generic assistant explanations user didn't confirm/use`;
+
+const REPO_ENTITY_CONTEXT = `Project/codebase knowledge for team sharing.
+
+EXTRACT:
+- Architecture: "uses monorepo with turborepo", "API in /apps/api"
+- Conventions: "components in PascalCase", "hooks prefixed with use"
+- Patterns: "all API routes use withAuth wrapper", "errors thrown as ApiError"
+- Setup: "requires .env with DATABASE_URL", "run pnpm db:migrate first"
+- Decisions: "chose Drizzle over Prisma for performance", "using RSC for data fetching"
+
+EXAMPLES:
+| Input | Memory |
+| "The auth flow works by..." | "Auth flow: [description]" |
+| "We structure components like..." | "Component structure convention: [pattern]" |
+| "To add a new API route..." | "Adding API routes: [steps]" |`;
+
 class SupermemoryClient {
   constructor(apiKey, containerTag) {
     if (!apiKey) throw new Error('SUPERMEMORY_CC_API_KEY is required');
@@ -33,13 +72,14 @@ class SupermemoryClient {
     this.containerTag = tag;
   }
 
-  async addMemory(content, containerTag, metadata = {}, customId = null) {
+  async addMemory(content, containerTag, metadata = {}, options = {}) {
     const payload = {
       content,
       containerTag: containerTag || this.containerTag,
       metadata: { sm_source: 'claude-code-plugin', ...metadata },
     };
-    if (customId) payload.customId = customId;
+    if (options.customId) payload.customId = options.customId;
+    if (options.entityContext) payload.entityContext = options.entityContext;
     const result = await this.client.add(payload);
     return {
       id: result.id,
@@ -92,20 +132,10 @@ class SupermemoryClient {
         : undefined,
     };
   }
-
-  async listMemories(containerTag, limit = 20) {
-    const result = await this.client.memories.list({
-      containerTags: containerTag || this.containerTag,
-      limit,
-      order: 'desc',
-      sort: 'createdAt',
-    });
-    return { memories: result.memories || result.results || [] };
-  }
-
-  async deleteMemory(memoryId) {
-    return this.client.memories.delete(memoryId);
-  }
 }
 
-module.exports = { SupermemoryClient };
+module.exports = {
+  SupermemoryClient,
+  PERSONAL_ENTITY_CONTEXT,
+  REPO_ENTITY_CONTEXT,
+};

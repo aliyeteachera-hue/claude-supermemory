@@ -1,4 +1,7 @@
-const { SupermemoryClient } = require('./lib/supermemory-client');
+const {
+  SupermemoryClient,
+  PERSONAL_ENTITY_CONTEXT,
+} = require('./lib/supermemory-client');
 const { getContainerTag, getProjectName } = require('./lib/container-tag');
 const { loadSettings, getApiKey, debugLog } = require('./lib/settings');
 const { readStdin, writeOutput } = require('./lib/stdin');
@@ -29,7 +32,7 @@ async function main() {
       return;
     }
 
-    const formatted = formatNewEntries(transcriptPath, sessionId);
+    const formatted = formatNewEntries(transcriptPath, sessionId, cwd);
 
     if (!formatted) {
       debugLog(settings, 'No new content to save');
@@ -49,7 +52,7 @@ async function main() {
         project: projectName,
         timestamp: new Date().toISOString(),
       },
-      sessionId,
+      { customId: sessionId, entityContext: PERSONAL_ENTITY_CONTEXT },
     );
 
     debugLog(settings, 'Session turn saved', { length: formatted.length });

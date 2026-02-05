@@ -1,8 +1,8 @@
 const {
   SupermemoryClient,
-  PERSONAL_ENTITY_CONTEXT,
+  REPO_ENTITY_CONTEXT,
 } = require('./lib/supermemory-client');
-const { getContainerTag, getProjectName } = require('./lib/container-tag');
+const { getRepoContainerTag, getProjectName } = require('./lib/container-tag');
 const { loadSettings, getApiKey } = require('./lib/settings');
 
 async function main() {
@@ -10,7 +10,7 @@ async function main() {
 
   if (!content || !content.trim()) {
     console.log(
-      'No content provided. Usage: node add-memory.cjs "content to save"',
+      'No content provided. Usage: node save-project-memory.cjs "content to save"',
     );
     return;
   }
@@ -27,7 +27,7 @@ async function main() {
   }
 
   const cwd = process.cwd();
-  const containerTag = getContainerTag(cwd);
+  const containerTag = getRepoContainerTag(cwd);
   const projectName = getProjectName(cwd);
 
   try {
@@ -36,17 +36,17 @@ async function main() {
       content,
       containerTag,
       {
-        type: 'manual',
+        type: 'project-knowledge',
         project: projectName,
         timestamp: new Date().toISOString(),
       },
-      { entityContext: PERSONAL_ENTITY_CONTEXT },
+      { entityContext: REPO_ENTITY_CONTEXT },
     );
 
-    console.log(`Memory saved to project: ${projectName}`);
+    console.log(`Project knowledge saved: ${projectName}`);
     console.log(`ID: ${result.id}`);
   } catch (err) {
-    console.log(`Error saving memory: ${err.message}`);
+    console.log(`Error saving: ${err.message}`);
   }
 }
 
