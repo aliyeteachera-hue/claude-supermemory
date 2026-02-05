@@ -1,6 +1,7 @@
 # Claude-Supermemory
 
-<img width="4000" height="2250" alt="image (5)" src="https://github.com/user-attachments/assets/9efce3d4-5cb5-4cea-bfc7-a9104227a41c" />
+<img width="4000" height="2130" alt="image (6)" src="https://github.com/user-attachments/assets/07e63ac4-b67d-457b-9029-1dc5d860e920" />
+
 
 
 > **✨ Requires [Supermemory Pro or above](https://console.supermemory.ai/billing)** - Unlock the state of the art memory for your Claude code.
