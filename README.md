@@ -2,109 +2,89 @@
 
 <img width="4000" height="2130" alt="image (6)" src="https://github.com/user-attachments/assets/07e63ac4-b67d-457b-9029-1dc5d860e920" />
 
-
-
 > **✨ Requires [Supermemory Pro or above](https://console.supermemory.ai/billing)** - Unlock the state of the art memory for your Claude code.
 
 A Claude Code plugin that gives your AI persistent memory across sessions using [Supermemory](https://supermemory.ai).
 Your agent remembers what you worked on - across sessions, across projects.
 
-
 ## Features
 
-- **Context Injection**: On session start, relevant memories are automatically injected into Claude's context
-- **Automatic Capture**: Conversation turns are captured and stored for future context
-- **Codebase Indexing**: Index your project's architecture, patterns, and conventions
+- **Team Memory** — Project knowledge shared across your team, separate from personal memories
+- **Auto Capture** — Conversations saved when session ends
+- **Project Config** — Per-repo settings, API keys, and container tags
 
 ## Installation
 
 ```bash
-# Add the plugin marketplace
 /plugin marketplace add supermemoryai/claude-supermemory
-
-# Or from local directory
-/plugin marketplace add /path/to/claude-supermemory
-
-# Install the plugin
 /plugin install claude-supermemory
+```
 
-# Set your API key
+Set your API key (get one at [console.supermemory.ai](https://console.supermemory.ai)):
+
+```bash
 export SUPERMEMORY_CC_API_KEY="sm_..."
 ```
 
-Get your API key at [console.supermemory.ai](https://console.supermemory.ai).
-
 ## How It Works
 
-### On Session Start
-
-The plugin fetches relevant memories from Supermemory and injects them into Claude's context:
-
-```
-<supermemory-context>
-The following is recalled context about the user...
-
-## User Profile (Persistent)
-- Prefers TypeScript over JavaScript
-- Uses Bun as package manager
-
-## Recent Context
-- Working on authentication flow
-
-</supermemory-context>
-```
-
-### During Session
-
-Conversation turns are automatically captured on each stop and stored for future context.
-
-### Skills
-
-**super-search**: When you ask about past work, previous sessions, or want to recall information, the agent automatically searches your memories.
+- **super-search** — Ask about past work or previous sessions, Claude searches your memories
+- **super-save** — Ask to save something important, Claude saves it for the team
 
 ## Commands
 
-### /claude-supermemory:index
-
-Index your codebase into Supermemory. Explores project structure, architecture, conventions, and key files.
-
-```
-/claude-supermemory:index
-```
-
-### /claude-supermemory:logout
-
-Log out from Supermemory and clear saved credentials.
-
-```
-/claude-supermemory:logout
-```
+| Command                              | Description                              |
+| ------------------------------------ | ---------------------------------------- |
+| `/claude-supermemory:index`          | Index codebase architecture and patterns |
+| `/claude-supermemory:project-config` | Configure project-level settings         |
+| `/claude-supermemory:logout`         | Clear saved credentials                  |
 
 ## Configuration
 
-### Environment Variables
+**Environment**
 
 ```bash
-# Required
-SUPERMEMORY_CC_API_KEY=sm_...
-
-# Optional
-SUPERMEMORY_SKIP_TOOLS=Read,Glob,Grep    # Tools to not capture
-SUPERMEMORY_DEBUG=true                    # Enable debug logging
+SUPERMEMORY_CC_API_KEY=sm_...    # Required
+SUPERMEMORY_DEBUG=true           # Optional: enable debug logging
 ```
 
-### Settings File
-
-Create `~/.supermemory-claude/settings.json`:
+**Global Settings** — `~/.supermemory-claude/settings.json`
 
 ```json
 {
-  "skipTools": ["Read", "Glob", "Grep", "TodoWrite"],
-  "captureTools": ["Edit", "Write", "Bash", "Task"],
   "maxProfileItems": 5,
-  "debug": false
+  "signalExtraction": true,
+  "signalKeywords": ["remember", "architecture", "decision", "bug", "fix"],
+  "signalTurnsBefore": 3,
+  "includeTools": ["Edit", "Write"]
 }
 ```
+
+| Option              | Description                                   |
+| ------------------- | --------------------------------------------- |
+| `maxProfileItems`   | Max memories in context (default: 5)          |
+| `signalExtraction`  | Only capture important turns (default: false) |
+| `signalKeywords`    | Keywords that trigger capture                 |
+| `signalTurnsBefore` | Context turns before signal (default: 3)      |
+| `includeTools`      | Tools to explicitly capture                   |
+
+**Project Config** — `.claude/.supermemory-claude/config.json`
+
+Per-repo overrides. Run `/claude-supermemory:project-config` or create manually:
+
+```json
+{
+  "apiKey": "sm_...",
+  "repoContainerTag": "my-team-project",
+  "signalExtraction": true
+}
+```
+
+| Option                 | Description                 |
+| ---------------------- | --------------------------- |
+| `apiKey`               | Project-specific API key    |
+| `personalContainerTag` | Override personal container |
+| `repoContainerTag`     | Override team container tag |
 
 ## License
 

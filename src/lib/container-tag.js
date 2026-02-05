@@ -19,6 +19,20 @@ function getGitRoot(cwd) {
   }
 }
 
+function getGitRepoName(cwd) {
+  try {
+    const remoteUrl = execSync('git remote get-url origin', {
+      cwd,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim();
+    const match = remoteUrl.match(/[/:]([^/]+?)(?:\.git)?$/);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
+}
+
 function getContainerTag(cwd) {
   const projectConfig = loadProjectConfig(cwd);
   if (projectConfig?.personalContainerTag) {
@@ -44,19 +58,24 @@ function getRepoContainerTag(cwd) {
   }
   const gitRoot = getGitRoot(cwd);
   const basePath = gitRoot || cwd;
-  const repoName = basePath.split('/').pop() || 'unknown';
+
+  const gitRepoName = getGitRepoName(basePath);
+  const repoName = gitRepoName || basePath.split('/').pop() || 'unknown';
+
   return `repo_${sanitizeRepoName(repoName)}`;
 }
 
 function getProjectName(cwd) {
   const gitRoot = getGitRoot(cwd);
   const basePath = gitRoot || cwd;
-  return basePath.split('/').pop() || 'unknown';
+  const gitRepoName = getGitRepoName(basePath);
+  return gitRepoName || basePath.split('/').pop() || 'unknown';
 }
 
 module.exports = {
   sha256,
   getGitRoot,
+  getGitRepoName,
   getContainerTag,
   getRepoContainerTag,
   getProjectName,
