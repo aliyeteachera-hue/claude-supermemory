@@ -1,8 +1,9 @@
 # Claude-Supermemory
 
-<img width="1386" height="258" alt="Screenshot 2026-01-28 at 11 34 13 PM" src="https://github.com/user-attachments/assets/a692791a-a054-495a-ab53-45f1071ff26f" />
+<img width="4000" height="2250" alt="image (5)" src="https://github.com/user-attachments/assets/9efce3d4-5cb5-4cea-bfc7-a9104227a41c" />
 
-> **✨ Requires [Supermemory Pro or above](https://console.supermemory.ai/billing)** - Unlock the state of the art memory for your OpenClaw bot.
+
+> **✨ Requires [Supermemory Pro or above](https://console.supermemory.ai/billing)** - Unlock the state of the art memory for your Claude code.
 
 A Claude Code plugin that gives your AI persistent memory across sessions using [Supermemory](https://supermemory.ai).
 Your agent remembers what you worked on - across sessions, across projects.
