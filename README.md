@@ -8,7 +8,6 @@ A Claude Code plugin that gives your AI persistent memory across sessions using 
 Your agent remembers what you worked on - across sessions, across projects.
 
 ## Features
-
 - **Team Memory** — Project knowledge shared across your team, separate from personal memories
 - **Auto Capture** — Conversations saved when session ends
 - **Project Config** — Per-repo settings, API keys, and container tags
